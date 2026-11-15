@@ -1,0 +1,13 @@
+{
+  "name": "react-assignments",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Exactspace Technologies Frontend Internship Assignments: Chat App and Infinite-Scroll Photo Gallery",
+  "scripts": {
+    "dev:chat": "npm --prefix chat-app run dev",
+    "dev:gallery": "npm --prefix photo-gallery run dev",
+    "start:chat-server": "npm --prefix chat-app/server start",
+    "build:chat": "npm --prefix chat-app run build",
+    "build:gallery": "npm --prefix photo-gallery run build"
+  }
+}

@@ -1,0 +1,165 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+          cache-dependency-path: |
+            chat-app/package-lock.json
+            photo-gallery/package-lock.json
+
+      - name: Build Chat App
+        run: |
+          cd chat-app
+          npm ci
+          npm run build
+
+      - name: Build Photo Gallery
+        run: |
+          cd photo-gallery
+          npm ci
+          npm run build
+
+      - name: Assemble Combined Deployment Bundle
+        run: |
+          mkdir -p combined-dist
+          cp -r chat-app/dist combined-dist/chat
+          cp -r photo-gallery/dist combined-dist/gallery
+
+          # Create landing portal for evaluators & recruiters
+          cat << 'EOF' > combined-dist/index.html
+          <!DOCTYPE html>
+          <html lang="en">
+          <head>
+            <meta charset="UTF-8" />
+            <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+            <title>Exactspace Technologies – React Assignments Portal</title>
+            <style>
+              * { box-sizing: border-box; margin: 0; padding: 0; }
+              body {
+                font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+                background: #0f172a;
+                color: #f8fafc;
+                min-height: 100vh;
+                display: flex;
+                flex-direction: column;
+                align-items: center;
+                justify-content: center;
+                padding: 24px;
+              }
+              .portal-card {
+                background: #1e293b;
+                border: 1px solid #334155;
+                border-radius: 16px;
+                padding: 36px;
+                max-width: 680px;
+                width: 100%;
+                box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.4);
+                text-align: center;
+              }
+              .company-badge {
+                display: inline-block;
+                background: rgba(59, 130, 246, 0.15);
+                color: #60a5fa;
+                border: 1px solid rgba(59, 130, 246, 0.3);
+                padding: 6px 14px;
+                border-radius: 9999px;
+                font-size: 13px;
+                font-weight: 600;
+                margin-bottom: 16px;
+              }
+              h1 { font-size: 26px; font-weight: 700; margin-bottom: 8px; color: #ffffff; }
+              p.subtitle { color: #94a3b8; font-size: 15px; margin-bottom: 28px; line-height: 1.5; }
+              .links-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; text-align: left; }
+              @media (max-width: 580px) { .links-grid { grid-template-columns: 1fr; } }
+              .app-box {
+                background: #0f172a;
+                border: 1px solid #334155;
+                border-radius: 12px;
+                padding: 20px;
+                text-decoration: none;
+                color: inherit;
+                transition: all 0.2s ease;
+                display: flex;
+                flex-direction: column;
+                justify-content: space-between;
+              }
+              .app-box:hover {
+                border-color: #3b82f6;
+                transform: translateY(-2px);
+                box-shadow: 0 10px 20px rgba(59, 130, 246, 0.15);
+              }
+              .app-title { font-size: 18px; font-weight: 600; color: #ffffff; margin-bottom: 8px; display: flex; align-items: center; gap: 8px; }
+              .app-desc { font-size: 13.5px; color: #94a3b8; line-height: 1.4; margin-bottom: 14px; }
+              .launch-btn { font-size: 13px; font-weight: 600; color: #38bdf8; display: inline-flex; align-items: center; gap: 4px; }
+              .footer-text { margin-top: 32px; font-size: 13px; color: #64748b; }
+            </style>
+          </head>
+          <body>
+            <div class="portal-card">
+              <span class="company-badge">Exactspace Technologies Selection</span>
+              <h1>Frontend Developer Assignments</h1>
+              <p class="subtitle">Completed implementations by <strong>Ansuj K Meher</strong> for the Front End / UI Developer Internship.</p>
+              
+              <div class="links-grid">
+                <a href="./chat/" class="app-box">
+                  <div>
+                    <div class="app-title">💬 Chat App</div>
+                    <p class="app-desc">Single-page team chat app with random user attribution, independent like counters, emojis, and @mentions.</p>
+                  </div>
+                  <span class="launch-btn">Launch Chat App &rarr;</span>
+                </a>
+
+                <a href="./gallery/" class="app-box">
+                  <div>
+                    <div class="app-title">🖼️ Photo Gallery</div>
+                    <p class="app-desc">Infinite scroll gallery consuming Picsum Photos REST API with 1-column layout and FontAwesome thumbs-up counters.</p>
+                  </div>
+                  <span class="launch-btn">Launch Photo Gallery &rarr;</span>
+                </a>
+              </div>
+
+              <div class="footer-text">
+                Source Code: <a href="https://github.com/ANSUJKMEHER/react-assignments" style="color: #94a3b8;">github.com/ANSUJKMEHER/react-assignments</a>
+              </div>
+            </div>
+          </body>
+          </html>
+          EOF
+
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      - name: Upload Pages Artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: 'combined-dist'
+
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
